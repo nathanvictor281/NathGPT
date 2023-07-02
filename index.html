@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ChatGPT Web Interface</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>NathanGPT</h1>
+        </div>
+        <div class="chatbox" id="chatbox"></div>
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Type your message..." autocomplete="off">
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var apiKey = prompt("Please enter your ChatGPT API key:");
+            if (!apiKey) {
+                alert("API key is required. Please refresh the page and enter a valid API key.");
+                return;
+            }
+
+            const chatboxElement = document.getElementById("chatbox");
+            const userInputElement = document.getElementById("userInput");
+            const sendButton = document.getElementById("sendButton");
+
+            const openai = axios.create({
+                baseURL: "https://api.openai.com/v1",
+                headers: {
+                    "Authorization": "Bearer " + apiKey,
+                    "Content-Type": "application/json"
+                }
+            });
+
+            let messages = JSON.parse(localStorage.getItem("chatMessages")) || []; // Retrieve conversation history from local storage
+
+            // Display existing conversation history
+            messages.forEach(function(message) {
+                appendMessage(message.content, message.role === "user" ? "user-message" : "chatbot-message");
+            });
+
+            async function sendMessage() {
+                const userInput = userInputElement.value;
+                userInputElement.value = "";
+                appendMessage("User: " + userInput, "user-message");
+
+                messages.push({ role: "user", content: userInput }); // Add user message to conversation
+
+                try {
+                    const response = await openai.post("/chat/completions", {
+                        model: "gpt-3.5-turbo",
+                        messages: messages // Pass all messages in the conversation
+                    });
+
+                    const chatbotMessage = response.data.choices[0].message.content;
+                    appendMessage("ChatGPT: " + chatbotMessage, "chatbot-message");
+
+                    messages.push({ role: "assistant", content: chatbotMessage }); // Add chatbot response to conversation
+
+                    // Save updated conversation history to local storage
+                    localStorage.setItem("chatMessages", JSON.stringify(messages));
+                } catch (error) {
+                    console.error("Error:", error);
+                }
+            }
+
+            function appendMessage(message, className) {
+                const messageElement = document.createElement("p");
+                messageElement.className = className;
+                messageElement.innerText = message;
+                chatboxElement.appendChild(messageElement);
+
+                // Automatically scroll to the bottom of the chatbox
+                chatboxElement.scrollTop = chatboxElement.scrollHeight;
+            }
+
+            sendButton.addEventListener("click", sendMessage);
+            userInputElement.addEventListener("keydown", function(event) {
+                if (event.key === "Enter") {
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
