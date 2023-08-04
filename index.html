@@ -1,13 +1,141 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ChatGPT Web Interface</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico/ms-icon-144x144.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+
+    <title>Nathan Corp</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #000000;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .chat-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ddd;
+            background-color: #fff;
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #2196F3;
+        }
+
+        .chatbox {
+            flex: 1;
+            max-height: calc(100vh - 180px);
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f7f7f7;
+        }
+
+        .user-message, .chatbot-message {
+            background-color: #f7f7f7;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin: 5px 0;
+        }
+
+        .user-message {
+            background-color: #e2f0ff;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #fff;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        #sendButton {
+            margin-left: 10px;
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .toggle-container {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .toggle-container .toggle-icon {
+            font-size: 30px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .toggle-input {
+            display: none;
+        }
+
+        .toggle-input:checked + .toggle-icon .toggle-icon-sun {
+            transform: rotate(180deg);
+        }
+
+        .dark-mode .chat-container {
+            background-color: #222222;
+            color: #ffffff;
+        }
+
+        .dark-mode .chat-header {
+            background-color: #333333;
+        }
+
+        .dark-mode .chat-header h1 {
+            color: #ffffff;
+        }
+
+        .dark-mode .chatbox {
+            background-color: #333333;
+        }
+
+        .dark-mode .user-message, .dark-mode .chatbot-message {
+            background-color: #444444;
+        }
+    </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
             <h1>NathanGPT</h1>
+            <div class="toggle-container">
+                <input class="toggle-input" type="checkbox" id="dark-mode" onchange="toggleDarkMode()">
+                <label class="toggle-icon" for="dark-mode">
+                    <span class="toggle-icon-sun">&#9728;</span>
+                </label>
+            </div>
         </div>
         <div class="chatbox" id="chatbox"></div>
         <div class="input-container">
@@ -18,15 +146,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var apiKey = prompt("Please enter your ChatGPT API key:");
-            if (!apiKey) {
-                alert("API key is required. Please refresh the page and enter a valid API key.");
-                return;
+        document.addEventListener("DOMContentLoaded", async function() {
+            let apiKey = null;
+            while (!apiKey) {
+                apiKey = prompt("Please enter your ChatGPT API key:");
+                if (!apiKey) {
+                    alert("API key is required. Please enter a valid API key.");
+                }
             }
 
-            const chatboxElement = document.getElementById("chatbox");
-            const userInputElement = document.getElementById("userInput");
+            const chatbox = document.getElementById("chatbox");
+            const userInput = document.getElementById("userInput");
             const sendButton = document.getElementById("sendButton");
 
             const openai = axios.create({
@@ -37,54 +167,53 @@
                 }
             });
 
-            let messages = JSON.parse(localStorage.getItem("chatMessages")) || []; // Retrieve conversation history from local storage
-
-            // Display existing conversation history
-            messages.forEach(function(message) {
-                appendMessage(message.content, message.role === "user" ? "user-message" : "chatbot-message");
-            });
+            let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+            messages.forEach(m => appendMessage(m.content, m.role === "user" ? "user-message" : "chatbot-message"));
 
             async function sendMessage() {
-                const userInput = userInputElement.value;
-                userInputElement.value = "";
-                appendMessage("User: " + userInput, "user-message");
-
-                messages.push({ role: "user", content: userInput }); // Add user message to conversation
+                const input = userInput.value;
+                userInput.value = "";
+                appendMessage("User: " + input, "user-message");
+                messages.push({ role: "user", content: input });
 
                 try {
-                    const response = await openai.post("/chat/completions", {
-                        model: "gpt-3.5-turbo",
-                        messages: messages // Pass all messages in the conversation
-                    });
-
+                    const response = await openai.post("/chat/completions", { model: "gpt-3.5-turbo", messages });
                     const chatbotMessage = response.data.choices[0].message.content;
                     appendMessage("ChatGPT: " + chatbotMessage, "chatbot-message");
-
-                    messages.push({ role: "assistant", content: chatbotMessage }); // Add chatbot response to conversation
-
-                    // Save updated conversation history to local storage
+                    messages.push({ role: "assistant", content: chatbotMessage });
                     localStorage.setItem("chatMessages", JSON.stringify(messages));
                 } catch (error) {
                     console.error("Error:", error);
                 }
             }
 
-            function appendMessage(message, className) {
-                const messageElement = document.createElement("p");
-                messageElement.className = className;
-                messageElement.innerText = message;
-                chatboxElement.appendChild(messageElement);
+            function appendMessage(msg, className) {
+                const msgElem = document.createElement("p");
+                msgElem.className = className;
+                msgElem.innerText = msg;
+                chatbox.appendChild(msgElem);
+                chatbox.scrollTop = chatbox.scrollHeight;
+            }
 
-                // Automatically scroll to the bottom of the chatbox
-                chatboxElement.scrollTop = chatboxElement.scrollHeight;
+            function toggleDarkMode() {
+                const darkModeToggle = document.getElementById("dark-mode");
+                const chatContainer = document.querySelector(".chat-container");
+                if (darkModeToggle.checked) {
+                    document.body.classList.add("dark-mode");
+                } else {
+                    document.body.classList.remove("dark-mode");
+                }
             }
 
             sendButton.addEventListener("click", sendMessage);
-            userInputElement.addEventListener("keydown", function(event) {
-                if (event.key === "Enter") {
-                    sendMessage();
-                }
-            });
+            userInput.addEventListener("keydown", e => e.key === "Enter" && sendMessage());
+
+            // Set initial mode based on system preference
+            if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                const darkModeToggle = document.getElementById("dark-mode");
+                darkModeToggle.checked = true;
+                document.body.classList.add("dark-mode");
+            }
         });
     </script>
 </body>
