@@ -100,9 +100,7 @@
             display: none;
         }
 
-        .toggle-input:checked + .toggle-icon .toggle-icon-sun {
-            transform: rotate(180deg);
-        }
+    
 
         .dark-mode .chat-container {
             background-color: #222222;
@@ -124,6 +122,20 @@
         .dark-mode .user-message, .dark-mode .chatbot-message {
             background-color: #444444;
         }
+
+        .dark-mode .input-container {
+            background-color: #333333;
+        }
+
+        .dark-mode #userInput {
+            color: #ffffff;
+            background-color: #222222;
+            border: 1px solid #888888;
+        }
+
+        .dark-mode #sendButton {
+            background-color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -133,7 +145,7 @@
             <div class="toggle-container">
                 <input class="toggle-input" type="checkbox" id="dark-mode" onchange="toggleDarkMode()">
                 <label class="toggle-icon" for="dark-mode">
-                    <span class="toggle-icon-sun">&#9728;</span>
+                 
                 </label>
             </div>
         </div>
